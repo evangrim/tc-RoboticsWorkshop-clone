@@ -1,5 +1,5 @@
 // 在這裡添加你的程式
-//% weight=0 color=#3CB371 icon="\uf2db" block="gigotools" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
+//% weight=0 color=#3CB371 icon="\uf2db" block="IG-gigotools" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
 enum PingUnit {
     //% block="cm"
     Centimeters,
@@ -53,7 +53,7 @@ namespace RoboticsWorkshop {
     D(16,0)
     I2C(20,19)
     */
-    //% blockId=DDMmotor2 block="motor channel %MotorPin|speed (0~100) %MSpeedValue|rotation direction(0~1) %McontrolValue" blockExternalInputs=false
+    //% blockId=DDMmotor2 block="IG- motor channel %MotorPin|speed (0~100) %MSpeedValue|rotation direction(0~1) %McontrolValue" blockExternalInputs=false
     //% McontrolValue.min=0 McontrolValue.max=1
     //% MSpeedValue.min=0 MSpeedValue.max=100
     //% group="Motor"
@@ -82,7 +82,7 @@ namespace RoboticsWorkshop {
     }
     /**馬達腳位自行宣告
       */
-    //% blockId=DDMmotor block="speed pin %MSpeedPin|speed (0~255) %MSpeedValue|direction pin %McontrolPin|rotation direction(0~1) %McontrolValue" blockExternalInputs=false
+    //% blockId=DDMmotor block="IG- speed pin %MSpeedPin|speed (0~255) %MSpeedValue|direction pin %McontrolPin|rotation direction(0~1) %McontrolValue" blockExternalInputs=false
     //% McontrolValue.min=0 McontrolValue.max=1
     //% MSpeedValue.min=0 MSpeedValue.max=255
     //% MSpeedPin.fieldEditor="gridpicker" MSpeedPin.fieldOptions.columns=4
@@ -109,7 +109,7 @@ namespace RoboticsWorkshop {
      * @param maxCmDistance maximum distance in centimeters (default is 500)
      */
 
-    //% blockId=sonar_ping block="trig pin %trig|echo pin %echo|unit %unit"
+    //% blockId=sonar_ping block="IG- trig pin %trig|echo pin %echo|unit %unit"
     //% group="Ultrasonic Sensor"
     export function ping(trig: DigitalPin, echo: DigitalPin, unit: PingUnit, maxCmDistance = 500): number {
         // send pulse
@@ -135,7 +135,7 @@ namespace RoboticsWorkshop {
     /**
          * Create a  RGB LED Pin.
          */
-    //% blockId="RGBLED_create" block="pin %pin|"
+    //% blockId="RGBLED_create" block="IG- pin %pin|"
     //% weight=100 blockGap=8
     //% trackArgs=0,2
     //% blockSetVariable=RGBLED
@@ -167,7 +167,7 @@ namespace RoboticsWorkshop {
          */
         //% subcategory="Add on pack"
         //% group="RGB LED"
-        //% block="%RGBLED|show color %rgb=RGBLED_colors"
+        //% block="%RGBLED|IG- show color %rgb=RGBLED_colors"
         //% weight=99 blockGap=8
         RGBLED_set_color(rgb: number) {
             rgb = rgb >> 0;
@@ -209,7 +209,7 @@ namespace RoboticsWorkshop {
          */
         //% subcategory="Add on pack"
         //% group="RGB LED"
-        //% block="%RGBLED|set brightness %brightness" blockGap=8
+        //% block="%RGBLED|IG- set brightness %brightness" blockGap=8
         //% weight=92
         //% brightness.min=0 brightness.max=255
         RGBLED_set_brightness(brightness: number): void {
@@ -334,7 +334,7 @@ namespace RoboticsWorkshop {
     //% subcategory="Add on pack"
     //% group="RGB LED"
     //% weight=1 blockGap=8
-    //% blockId="rgb" block="red %red|green %green|blue %blue"
+    //% blockId="rgb" block="IG- red %red|green %green|blue %blue"
     export function rgb(red: number, green: number, blue: number): number {
         return packRGB(red, green, blue);
     }
@@ -345,7 +345,7 @@ namespace RoboticsWorkshop {
     //% subcategory="Add on pack"
     //% group="RGB LED"
     //% weight=2 blockGap=8
-    //% blockId="RGBLED_colors" block="%color"
+    //% blockId="RGBLED_colors" block="IG- %color"
     export function colors(color: RGBLedColors): number {
         return color;
     }
@@ -458,7 +458,7 @@ namespace RoboticsWorkshop {
     }
 
     //% weight=12
-    //% block="initialize color sensor"
+    //% block="IG- initialize color sensor"
     //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorinit(): void {
@@ -469,7 +469,7 @@ namespace RoboticsWorkshop {
     */
     let nowReadColor = [0, 0, 0]
     //% weight=12
-    //% block="color sensor read color"
+    //% block="IG- color sensor read color"
     //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorReadColor(): void {
@@ -487,7 +487,7 @@ namespace RoboticsWorkshop {
         Blue = 3
     }
     //% weight=12
-    //% block="color sensor read RGB %channel |channel"
+    //% block="IG- color sensor read RGB %channel |channel"
     //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorRead(channel: Channel = 1): number {
@@ -531,7 +531,7 @@ namespace RoboticsWorkshop {
     let ReadCustom3Color = [0, 0, 0]
 
     //% weight=12
-    //% block="color sensor record %colorpart |"
+    //% block="IG- color sensor record %colorpart |"
     //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorRecord(colorpart: ColorPart = 1): void {
@@ -576,7 +576,7 @@ namespace RoboticsWorkshop {
     let WriteCustom3Color = [0, 0, 0]
     let forkrange = 30
     //% weight=99 blockGap=8
-    //% block="read R %WriteRed|and G %WriteGreen|and B %WriteBlue equal to %colorpart|"
+    //% block="IG- read R %WriteRed|and G %WriteGreen|and B %WriteBlue equal to %colorpart|"
     //% WriteRed.min=0 WriteRed.max=255
     //% WriteGreen.min=0 WriteGreen.max=255
     //% WriteBlue.min=0 WriteBlue.max=255
@@ -627,7 +627,7 @@ namespace RoboticsWorkshop {
     }
 
     //% weight=11 blockGap=8
-    //% block="set color match tolerance %range"
+    //% block="IG- set color match tolerance %range"
     //% range.min=1 range.max=100
     //% subcategory="Add on pack"
     //% group="Color Sensor"
