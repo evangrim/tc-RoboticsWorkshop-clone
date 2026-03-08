@@ -442,9 +442,9 @@ namespace RoboticsWorkshop {
         pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_BDATAL, NumberFormat.Int8LE, true);
         let blue  = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
         if (clear > 0) {
-            red   = Math.round((red   / clear) * 255);
-            green = Math.round((green / clear) * 255);
-            blue  = Math.round((blue  / clear) * 255);
+            red   = Math.min(255, Math.max(0, Math.round((red   / clear) * 255 * colorCalR)));
+            green = Math.min(255, Math.max(0, Math.round((green / clear) * 255 * colorCalG)));
+            blue  = Math.min(255, Math.max(0, Math.round((blue  / clear) * 255 * colorCalB)));
         }
         return [red, green, blue, clear];
     }
@@ -464,6 +464,20 @@ namespace RoboticsWorkshop {
     export function ColorSensorinit(): void {
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ATIME, NumberFormat.UInt16BE, false)
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ENABLE, NumberFormat.UInt16BE, false)
+    }
+
+    //% weight=13
+    //% block="calibrate color sensor white balance"
+    //% subcategory="Add on pack"
+    //% group="Color Sensor"
+    export function ColorSensorCalibrateWhite(): void {
+        colorCalR = 1;
+        colorCalG = 1;
+        colorCalB = 1;
+        let rgb = readRawRGB();
+        if (rgb[0] > 0) colorCalR = 255 / rgb[0];
+        if (rgb[1] > 0) colorCalG = 255 / rgb[1];
+        if (rgb[2] > 0) colorCalB = 255 / rgb[2];
     }
     /**
     */
@@ -574,6 +588,9 @@ namespace RoboticsWorkshop {
     let WriteCustom1Color = [0, 0, 0]
     let WriteCustom2Color = [0, 0, 0]
     let WriteCustom3Color = [0, 0, 0]
+    let colorCalR = 1;
+    let colorCalG = 1;
+    let colorCalB = 1;
     let forkrange = 30
     //% weight=99 blockGap=8
     //% block="read R %WriteRed|and G %WriteGreen|and B %WriteBlue equal to %colorpart|"
