@@ -423,13 +423,13 @@ namespace RoboticsWorkshop {
     ////////////////////////////////
 
     // TCS34725 register constants
-    const TCS_ADDR       = 41;    // 0x29
-    const TCS_ENABLE     = 0x80;  // command reg 0x00
-    const TCS_ATIME      = 0x8001; // command reg 0x01
-    const TCS_CMD_CDATAL = 0xB2;  // 0x80|0x20|0x12 — clear data low, auto-increment
-    const TCS_CMD_RDATAL = 0xB6;  // 0x80|0x20|0x16 — red data low
-    const TCS_CMD_GDATAL = 0xB8;  // 0x80|0x20|0x18 — green data low
-    const TCS_CMD_BDATAL = 0xBA;  // 0x80|0x20|0x1A — blue data low
+    const TCS_ADDR         = 41;     // 0x29 — I2C address
+    const TCS_INIT_ATIME   = 0x819C; // cmd byte 0x81 (ATIME reg) + value 0x9C (~240ms integration)
+    const TCS_INIT_ENABLE  = 0x8003; // cmd byte 0x80 (ENABLE reg) + value 0x03 (PON | AEN)
+    const TCS_CMD_CDATAL   = 0xB2;   // 0x80|0x20|0x12 — clear data low, auto-increment
+    const TCS_CMD_RDATAL   = 0xB6;   // 0x80|0x20|0x16 — red data low
+    const TCS_CMD_GDATAL   = 0xB8;   // 0x80|0x20|0x18 — green data low
+    const TCS_CMD_BDATAL   = 0xBA;   // 0x80|0x20|0x1A — blue data low
 
     // Read all four channels from TCS34725 and normalize RGB by clear channel
     function readRawRGB(): number[] {
@@ -462,8 +462,8 @@ namespace RoboticsWorkshop {
     //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorinit(): void {
-        pins.i2cWriteNumber(TCS_ADDR, TCS_ENABLE, NumberFormat.UInt16BE, false)
-        pins.i2cWriteNumber(TCS_ADDR, TCS_ATIME, NumberFormat.UInt16BE, false)
+        pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ATIME, NumberFormat.UInt16BE, false)
+        pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ENABLE, NumberFormat.UInt16BE, false)
     }
     /**
     */
