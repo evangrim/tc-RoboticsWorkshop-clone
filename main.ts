@@ -1,5 +1,5 @@
 // 在這裡添加你的程式
-//% weight=0 color=#3CB371 icon="\uf2db" block="IG-Robotics" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
+//% weight=0 color=#3CB371 icon="\uf2db" block="IG-gigotools" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
 enum PingUnit {
     //% block="cm"
     Centimeters,
@@ -39,7 +39,7 @@ enum RGBLedColors {
     White = 0xFFFFFF
 
 }
-namespace IGRobotics {
+namespace RoboticsWorkshop {
 
     ////////////////////////////////
     //          DDM Motor         //
@@ -139,6 +139,7 @@ namespace IGRobotics {
     //% weight=100 blockGap=8
     //% trackArgs=0,2
     //% blockSetVariable=RGBLED
+    //% subcategory="Add on pack"
     //% group="RGB LED"
     export function RGBLED_create(pin: DigitalPin): HaloHd {
         let RGBLED = new HaloHd();
@@ -164,6 +165,7 @@ namespace IGRobotics {
          * Shows whole ZIP Halo display as a given color (range 0-255 for r, g, b).
          * @param rgb RGB color of the LED
          */
+        //% subcategory="Add on pack"
         //% group="RGB LED"
         //% block="%RGBLED|IG- show color %rgb=RGBLED_colors"
         //% weight=99 blockGap=8
@@ -178,6 +180,7 @@ namespace IGRobotics {
         /**
          * Send all the changes to the ZIP Halo display.
          */
+        //% subcategory="Add on pack"
         //% group="RGB LED"
         /* blockId="kitronik_halo_hd_display_show" block="%RGBLED|show" blockGap=8 */
         //% weight=96
@@ -192,6 +195,7 @@ namespace IGRobotics {
          * Turn off all LEDs on the ZIP Halo display.
          * You need to call ``show`` to make the changes visible.
          */
+        //% subcategory="Add on pack"
         //% group="RGB LED"
         /* blockId="kitronik_halo_hd_display_clear" block="%RGBLED|clear" */
         //% weight=95 blockGap=8
@@ -203,6 +207,7 @@ namespace IGRobotics {
          * Set the brightness of the ZIP Halo display. This flag only applies to future show operation.
          * @param brightness a measure of LED brightness in 0-255. eg: 255
          */
+        //% subcategory="Add on pack"
         //% group="RGB LED"
         //% block="%RGBLED|IG- set brightness %brightness" blockGap=8
         //% weight=92
@@ -261,6 +266,7 @@ namespace IGRobotics {
      * @param wavelength value between 470 and 625. eg: 500
      */
     //% group="RGB LED"
+    //% subcategory="Add on pack"
     //% weight=1 blockGap=8
     /* blockId="kitronik_halo_hd_wavelength" block="wavelength %wavelength|nm" */
     //% wavelength.min=470 wavelength.max=625
@@ -290,6 +296,7 @@ namespace IGRobotics {
      * Colours end up fully saturated.
      * @param hue value between 0 and 360
      */
+    //% subcategory="Add on pack"
     //% group="RGB LED"
     //% weight=1 blockGap=8
     /* blockId="kitronik_halo_hd_hue" block="hue %hue" */
@@ -324,6 +331,7 @@ namespace IGRobotics {
      * @param green value of the green channel between 0 and 255. eg: 255
      * @param blue value of the blue channel between 0 and 255. eg: 255
      */
+    //% subcategory="Add on pack"
     //% group="RGB LED"
     //% weight=1 blockGap=8
     //% blockId="rgb" block="IG- red %red|green %green|blue %blue"
@@ -334,6 +342,7 @@ namespace IGRobotics {
     /**
      * Gets the RGB value of a known color
     */
+    //% subcategory="Add on pack"
     //% group="RGB LED"
     //% weight=2 blockGap=8
     //% blockId="RGBLED_colors" block="IG- %color"
@@ -450,6 +459,7 @@ namespace IGRobotics {
 
     //% weight=12
     //% block="IG- initialize color sensor"
+    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorinit(): void {
         pins.i2cWriteNumber(TCS_ADDR, TCS_ENABLE, NumberFormat.UInt16BE, false)
@@ -460,6 +470,7 @@ namespace IGRobotics {
     let nowReadColor = [0, 0, 0]
     //% weight=12
     //% block="IG- color sensor read color"
+    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorReadColor(): void {
         let raw = readRawRGB();
@@ -477,6 +488,7 @@ namespace IGRobotics {
     }
     //% weight=12
     //% block="IG- color sensor read RGB %channel |channel"
+    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorRead(channel: Channel = 1): number {
         let raw = readRawRGB();
@@ -520,6 +532,7 @@ namespace IGRobotics {
 
     //% weight=12
     //% block="IG- color sensor record %colorpart |"
+    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorRecord(colorpart: ColorPart = 1): void {
         let raw = readRawRGB();
@@ -567,6 +580,7 @@ namespace IGRobotics {
     //% WriteRed.min=0 WriteRed.max=255
     //% WriteGreen.min=0 WriteGreen.max=255
     //% WriteBlue.min=0 WriteBlue.max=255
+    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ReadColorEqual(WriteRed: number, WriteGreen: number, WriteBlue: number, colorpart: ColorPart = 1): boolean {
         ColorSensorReadColor();
@@ -615,6 +629,7 @@ namespace IGRobotics {
     //% weight=11 blockGap=8
     //% block="IG- set color match tolerance %range"
     //% range.min=1 range.max=100
+    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function setColorTolerance(range: number): void {
         forkrange = Math.clamp(1, 200, range);
