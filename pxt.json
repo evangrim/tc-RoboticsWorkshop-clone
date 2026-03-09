@@ -1,8 +1,8 @@
 
 {
-    "name": "RoboticsWorkshop",
+    "name": "IsaacsWorkshop",
     "version": "0.0.0",
-    "description": "Blocks provided by Thames & Kosmos for Robotics Workshop with Micro:Bit",
+    "description": "Basic sensor and servo operations",
     "icon": "",
     "license": "MIT",
     "dependencies": {
@@ -12,14 +12,7 @@
     "files": [
         "README.md",
         "main.ts",
-        "_locales/en/RoboticsWorkshop-strings.json",
-       "_locales/zh-tw/RoboticsWorkshop-strings.json",
-       "_locales/le/RoboticsWorkshop-strings.json",
-       "_locales/zh-cn/RoboticsWorkshop-strings.json"
-
+        "_locales/en/IsaacsWorkshop-strings.json",
     ],
-    
     "public": true
-  
-    
 }

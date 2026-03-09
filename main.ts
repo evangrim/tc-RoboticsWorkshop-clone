@@ -1,5 +1,6 @@
-// 在這裡添加你的程式
-//% weight=0 color=#3CB371 icon="\uf2db" block="gigotools" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
+// Adapted from Thames & Kosmos & Gigotools (Gigotoys).
+
+//% weight=0 color=#3CB371 icon="\uf2db" block="Sensors & Motors" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
 enum PingUnit {
     //% block="cm"
     Centimeters,
@@ -39,14 +40,14 @@ enum RGBLedColors {
     White = 0xFFFFFF
 
 }
-namespace RoboticsWorkshop {
+namespace IsaacsWorkshop {
 
     ////////////////////////////////
     //          DDM Motor         //
     ////////////////////////////////
 
 
-    /**馬達通道定義註解
+    /**Motor channel definition annotation
     A(1,2)
     B(8,13)
     C(14,15)
@@ -80,7 +81,7 @@ namespace RoboticsWorkshop {
 
         }
     }
-    /**馬達腳位自行宣告
+    /**Motor pinout automatically declared
       */
     //% blockId=DDMmotor block="speed pin %MSpeedPin|speed (0~255) %MSpeedValue|direction pin %McontrolPin|rotation direction(0~1) %McontrolValue" blockExternalInputs=false
     //% McontrolValue.min=0 McontrolValue.max=1
@@ -99,9 +100,9 @@ namespace RoboticsWorkshop {
     }
 
     ////////////////////////////////
-    //          超音波            //
+    //          Ultrasound            //
     ////////////////////////////////
-    /**超音波註解
+    /**Ultrasonic annotations
      * Send a ping and get the echo time (in microseconds) as a result
      * @param trig tigger pin
      * @param echo echo pin
@@ -419,7 +420,7 @@ namespace RoboticsWorkshop {
     }
 
     ////////////////////////////////
-    //          顏色感測器        //
+    //          Color sensor        //
     ////////////////////////////////
 
     // TCS34725 register constants
@@ -430,8 +431,19 @@ namespace RoboticsWorkshop {
     const TCS_CMD_RDATAL   = 0xB6;   // 0x80|0x20|0x16 — red data low
     const TCS_CMD_GDATAL   = 0xB8;   // 0x80|0x20|0x18 — green data low
     const TCS_CMD_BDATAL   = 0xBA;   // 0x80|0x20|0x1A — blue data low
+    const TCS_CONTROL_REG  = 0x8F;   // CONTROL register for gain setting
 
-    // Read all four channels from TCS34725 and normalize RGB by clear channel
+    let colorCalR = 1;
+    let colorCalG = 1;
+    let colorCalB = 1;
+    let colorBlackR = 0;
+    let colorBlackG = 0;
+    let colorBlackB = 0;
+    let forkrange = 30;
+    let nowReadColor = [0, 0, 0];
+
+    // Read all four channels from TCS34725 and normalize RGB by clear channel.
+    // Applies black offset then white-balance scaling.
     function readRawRGB(): number[] {
         pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_CDATAL, NumberFormat.Int8LE, true);
         let clear = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
@@ -442,9 +454,12 @@ namespace RoboticsWorkshop {
         pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_BDATAL, NumberFormat.Int8LE, true);
         let blue  = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
         if (clear > 0) {
-            red   = Math.min(255, Math.max(0, Math.round((red   / clear) * 255 * colorCalR)));
-            green = Math.min(255, Math.max(0, Math.round((green / clear) * 255 * colorCalG)));
-            blue  = Math.min(255, Math.max(0, Math.round((blue  / clear) * 255 * colorCalB)));
+            let normR = (red   / clear) * 255;
+            let normG = (green / clear) * 255;
+            let normB = (blue  / clear) * 255;
+            red   = Math.min(255, Math.max(0, Math.round((normR - colorBlackR) * colorCalR)));
+            green = Math.min(255, Math.max(0, Math.round((normG - colorBlackG) * colorCalG)));
+            blue  = Math.min(255, Math.max(0, Math.round((normB - colorBlackB) * colorCalB)));
         }
         return [red, green, blue, clear];
     }
@@ -457,41 +472,132 @@ namespace RoboticsWorkshop {
         return Math.sqrt(dr * dr + dg * dg + db * db);
     }
 
-    //% weight=12
+    // Convert RGB to hue (0–360 degrees)
+    function rgbToHue(r: number, g: number, b: number): number {
+        let max = Math.max(r, Math.max(g, b));
+        let min = Math.min(r, Math.min(g, b));
+        let delta = max - min;
+        if (delta == 0) return 0;
+        let h = 0;
+        if (max == r)      h = ((g - b) / delta) % 6;
+        else if (max == g) h = (b - r) / delta + 2;
+        else               h = (r - g) / delta + 4;
+        h = Math.round(h * 60);
+        return h < 0 ? h + 360 : h;
+    }
+
+    // Convert RGB to saturation percentage (0–100)
+    function rgbToSaturation(r: number, g: number, b: number): number {
+        let max = Math.max(r, Math.max(g, b));
+        if (max == 0) return 0;
+        return Math.round(((max - Math.min(r, Math.min(g, b))) / max) * 100);
+    }
+
+    // Return the stored reference color for the given ColorPart
+    function getStoredColor(colorpart: number): number[] {
+        switch (colorpart) {
+            case ColorPart.Red:     return ReadRedColor;
+            case ColorPart.Green:   return ReadGreenColor;
+            case ColorPart.Blue:    return ReadBlueColor;
+            case ColorPart.Yellow:  return ReadYellowColor;
+            case ColorPart.Purple:  return ReadPurpleColor;
+            case ColorPart.Custom1: return ReadCustom1Color;
+            case ColorPart.Custom2: return ReadCustom2Color;
+            case ColorPart.Custom3: return ReadCustom3Color;
+        }
+        return [0, 0, 0];
+    }
+
+    //% weight=16
     //% block="initialize color sensor"
-    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorinit(): void {
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ATIME, NumberFormat.UInt16BE, false)
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ENABLE, NumberFormat.UInt16BE, false)
     }
 
-    //% weight=13
+    export enum ColorSensorGain {
+        //% block="1x (bright)"
+        x1  = 0,
+        //% block="4x"
+        x4  = 1,
+        //% block="16x"
+        x16 = 2,
+        //% block="60x (dim)"
+        x60 = 3
+    }
+
+    //% weight=15
+    //% block="set color sensor gain %gain"
+    //% group="Color Sensor"
+    export function ColorSensorSetGain(gain: ColorSensorGain): void {
+        pins.i2cWriteNumber(TCS_ADDR, (TCS_CONTROL_REG << 8) | gain, NumberFormat.UInt16BE, false);
+    }
+
+    //% weight=15
+    //% block="color sensor ambient brightness (0-100)"
+    //% group="Color Sensor"
+    export function ColorSensorReadBrightness(): number {
+        pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_CDATAL, NumberFormat.Int8LE, true);
+        let rawClear = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
+        return Math.min(100, Math.round(rawClear / 655));
+    }
+
+    //% weight=15
+    //% block="color sensor suggested gain"
+    //% group="Color Sensor"
+    export function ColorSensorSuggestedGain(): ColorSensorGain {
+        pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_CDATAL, NumberFormat.Int8LE, true);
+        let rawClear = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
+        if (rawClear < 1000)  return ColorSensorGain.x60;
+        if (rawClear < 8000)  return ColorSensorGain.x16;
+        if (rawClear < 20000) return ColorSensorGain.x4;
+        return ColorSensorGain.x1;
+    }
+
+    //% weight=15
+    //% block="color sensor auto-set gain for environment"
+    //% group="Color Sensor"
+    export function ColorSensorAutoGain(): void {
+        ColorSensorSetGain(ColorSensorSuggestedGain());
+    }
+
+    //% weight=14
     //% block="calibrate color sensor white balance"
-    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorCalibrateWhite(): void {
         colorCalR = 1;
         colorCalG = 1;
         colorCalB = 1;
         let rgb = readRawRGB();
-        if (rgb[0] > 0) colorCalR = 255 / rgb[0];
-        if (rgb[1] > 0) colorCalG = 255 / rgb[1];
-        if (rgb[2] > 0) colorCalB = 255 / rgb[2];
+        let whiteR = rgb[0] - colorBlackR;
+        let whiteG = rgb[1] - colorBlackG;
+        let whiteB = rgb[2] - colorBlackB;
+        if (whiteR > 0) colorCalR = 255 / whiteR;
+        if (whiteG > 0) colorCalG = 255 / whiteG;
+        if (whiteB > 0) colorCalB = 255 / whiteB;
     }
-    /**
-    */
-    let nowReadColor = [0, 0, 0]
+
+    //% weight=14
+    //% block="calibrate color sensor black (point at dark surface)"
+    //% group="Color Sensor"
+    export function ColorSensorCalibrateBlack(): void {
+        colorCalR = 1; colorCalG = 1; colorCalB = 1;
+        colorBlackR = 0; colorBlackG = 0; colorBlackB = 0;
+        let rgb = readRawRGB();
+        colorBlackR = rgb[0];
+        colorBlackG = rgb[1];
+        colorBlackB = rgb[2];
+    }
+
     //% weight=12
     //% block="color sensor read color"
-    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorReadColor(): void {
         let raw = readRawRGB();
         nowReadColor = [raw[0], raw[1], raw[2]];
     }
-    /**
-   */
+
     export enum Channel {
         //% block="R"
         Red = 1,
@@ -500,22 +606,49 @@ namespace RoboticsWorkshop {
         //% block="B"
         Blue = 3
     }
+
     //% weight=12
     //% block="color sensor read RGB %channel |channel"
-    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorRead(channel: Channel = 1): number {
         let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
         switch (channel) {
-            case Channel.Red:
-                return raw[0];
-            case Channel.Green:
-                return raw[1];
-            case Channel.Blue:
-                return raw[2];
+            case Channel.Red:   return raw[0];
+            case Channel.Green: return raw[1];
+            case Channel.Blue:  return raw[2];
         }
         return 0;
     }
+
+    //% weight=12
+    //% block="color sensor read hue (0-360)"
+    //% group="Color Sensor"
+    export function ColorSensorReadHue(): number {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        return rgbToHue(raw[0], raw[1], raw[2]);
+    }
+
+    //% weight=12
+    //% block="color sensor read saturation (0-100)"
+    //% group="Color Sensor"
+    export function ColorSensorReadSaturation(): number {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        return rgbToSaturation(raw[0], raw[1], raw[2]);
+    }
+
+    //% weight=12
+    //% block="color sensor is gray (saturation below %threshold)"
+    //% threshold.min=0 threshold.max=100
+    //% group="Color Sensor"
+    export function ColorSensorIsGray(threshold: number = 20): boolean {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        return rgbToSaturation(raw[0], raw[1], raw[2]) < threshold;
+    }
+
     export enum ColorPart {
         //% block="Red"
         Red = 1,
@@ -546,110 +679,90 @@ namespace RoboticsWorkshop {
 
     //% weight=12
     //% block="color sensor record %colorpart |"
-    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function ColorSensorRecord(colorpart: ColorPart = 1): void {
         let raw = readRawRGB();
-        let TCS_RED   = raw[0];
-        let TCS_GREEN = raw[1];
-        let TCS_BLUE  = raw[2];
+        let rgb = [raw[0], raw[1], raw[2]];
         switch (colorpart) {
-            case ColorPart.Red:
-                ReadRedColor = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
-            case ColorPart.Green:
-                ReadGreenColor = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
-            case ColorPart.Blue:
-                ReadBlueColor = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
-            case ColorPart.Yellow:
-                ReadYellowColor = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
-            case ColorPart.Purple:
-                ReadPurpleColor = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
-            case ColorPart.Custom1:
-                ReadCustom1Color = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
-            case ColorPart.Custom2:
-                ReadCustom2Color = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
-            case ColorPart.Custom3:
-                ReadCustom3Color = [TCS_RED, TCS_GREEN, TCS_BLUE]
-                break;
+            case ColorPart.Red:     ReadRedColor     = rgb; break;
+            case ColorPart.Green:   ReadGreenColor   = rgb; break;
+            case ColorPart.Blue:    ReadBlueColor    = rgb; break;
+            case ColorPart.Yellow:  ReadYellowColor  = rgb; break;
+            case ColorPart.Purple:  ReadPurpleColor  = rgb; break;
+            case ColorPart.Custom1: ReadCustom1Color = rgb; break;
+            case ColorPart.Custom2: ReadCustom2Color = rgb; break;
+            case ColorPart.Custom3: ReadCustom3Color = rgb; break;
         }
-    }
-    let WriteRedColor = [0, 0, 0]
-    let WriteGreenColor = [0, 0, 0]
-    let WriteBlueColor = [0, 0, 0]
-    let WriteYellowColor = [0, 0, 0]
-    let WritePurpleColor = [0, 0, 0]
-    let WriteCustom1Color = [0, 0, 0]
-    let WriteCustom2Color = [0, 0, 0]
-    let WriteCustom3Color = [0, 0, 0]
-    let colorCalR = 1;
-    let colorCalG = 1;
-    let colorCalB = 1;
-    let forkrange = 30
-    //% weight=99 blockGap=8
-    //% block="read R %WriteRed|and G %WriteGreen|and B %WriteBlue equal to %colorpart|"
-    //% WriteRed.min=0 WriteRed.max=255
-    //% WriteGreen.min=0 WriteGreen.max=255
-    //% WriteBlue.min=0 WriteBlue.max=255
-    //% subcategory="Add on pack"
-    //% group="Color Sensor"
-    export function ReadColorEqual(WriteRed: number, WriteGreen: number, WriteBlue: number, colorpart: ColorPart = 1): boolean {
-        ColorSensorReadColor();
-        let writeColor = [WriteRed, WriteGreen, WriteBlue];
-        let refColor: number[];
-        switch (colorpart) {
-            case ColorPart.Red:
-                WriteRedColor = writeColor;
-                refColor = ReadRedColor;
-                break;
-            case ColorPart.Green:
-                WriteGreenColor = writeColor;
-                refColor = ReadGreenColor;
-                break;
-            case ColorPart.Blue:
-                WriteBlueColor = writeColor;
-                refColor = ReadBlueColor;
-                break;
-            case ColorPart.Yellow:
-                WriteYellowColor = writeColor;
-                refColor = ReadYellowColor;
-                break;
-            case ColorPart.Purple:
-                WritePurpleColor = writeColor;
-                refColor = ReadPurpleColor;
-                break;
-            case ColorPart.Custom1:
-                WriteCustom1Color = writeColor;
-                refColor = ReadCustom1Color;
-                break;
-            case ColorPart.Custom2:
-                WriteCustom2Color = writeColor;
-                refColor = ReadCustom2Color;
-                break;
-            case ColorPart.Custom3:
-                WriteCustom3Color = writeColor;
-                refColor = ReadCustom3Color;
-                break;
-            default:
-                return false;
-        }
-        return colorDistance(refColor, nowReadColor) < forkrange
-            || colorDistance(writeColor, nowReadColor) < forkrange;
     }
 
     //% weight=11 blockGap=8
     //% block="set color match tolerance %range"
     //% range.min=1 range.max=100
-    //% subcategory="Add on pack"
     //% group="Color Sensor"
     export function setColorTolerance(range: number): void {
-        forkrange = Math.clamp(1, 200, range);
+        forkrange = Math.clamp(1, 100, range);
+    }
+
+    //% weight=10
+    //% block="color sensor matches stored %colorpart"
+    //% group="Color Sensor"
+    export function ColorSensorMatchesStored(colorpart: ColorPart): boolean {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        return colorDistance(nowReadColor, getStoredColor(colorpart)) < forkrange;
+    }
+
+    //% weight=10
+    //% block="color sensor matches R %r G %g B %b"
+    //% r.min=0 r.max=255
+    //% g.min=0 g.max=255
+    //% b.min=0 b.max=255
+    //% group="Color Sensor"
+    export function ColorSensorMatchesRGB(r: number, g: number, b: number): boolean {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        return colorDistance(nowReadColor, [r, g, b]) < forkrange;
+    }
+
+    //% weight=10
+    //% block="color sensor hue matches stored %colorpart within %hueTolerance degrees"
+    //% hueTolerance.min=1 hueTolerance.max=180
+    //% group="Color Sensor"
+    export function ColorSensorMatchesStoredByHue(colorpart: ColorPart, hueTolerance: number = 30): boolean {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        if (rgbToSaturation(raw[0], raw[1], raw[2]) < 15) return false;
+        let ref = getStoredColor(colorpart);
+        if (rgbToSaturation(ref[0], ref[1], ref[2]) < 15) return false;
+        let h1 = rgbToHue(raw[0], raw[1], raw[2]);
+        let h2 = rgbToHue(ref[0], ref[1], ref[2]);
+        let diff = Math.abs(h1 - h2);
+        return (diff > 180 ? 360 - diff : diff) <= hueTolerance;
+    }
+
+    //% weight=10
+    //% block="color sensor closest stored color"
+    //% group="Color Sensor"
+    export function ColorSensorClosestMatch(): ColorPart {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        let bestPart = ColorPart.Red;
+        let bestDist = 999999;
+        for (let i = 1; i <= 8; i++) {
+            let ref = getStoredColor(i);
+            let d = colorDistance(nowReadColor, ref);
+            if (d < bestDist) { bestDist = d; bestPart = i; }
+        }
+        return bestPart;
+    }
+
+    //% weight=10
+    //% block="show scanned color on %led"
+    //% group="Color Sensor"
+    export function ColorSensorShowOnLED(led: HaloHd): void {
+        let raw = readRawRGB();
+        nowReadColor = [raw[0], raw[1], raw[2]];
+        led.RGBLED_set_color(packRGB(raw[0], raw[1], raw[2]));
     }
 
 }
