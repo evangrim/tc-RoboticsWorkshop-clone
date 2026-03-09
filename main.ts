@@ -4,7 +4,6 @@
 //   TCS34725 driver & DN40 IR correction: https://github.com/adafruit/Adafruit_TCS34725
 //   Colour finder tutorial: https://github.com/systembolaget/Physical-computing-sensor-servo-tutorial-6a-Colour-finder-with-ams-TCS34725-and-HD-1900A
 
-//% weight=0 color=#3CB371 icon="\uf2db" block="IsaacWorkshop" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
 enum PingUnit {
     //% block="cm"
     Centimeters,
@@ -44,6 +43,8 @@ enum RGBLedColors {
     White = 0xFFFFFF
 
 }
+//% weight=0 color=#3CB371 icon="\uf2db" block="IsaacWorkshop"
+//% groups='["Motor", "Ultrasonic Sensor", "RGB LED", "Color Sensor"]'
 namespace IsaacWorkshop {
 
     ////////////////////////////////
@@ -144,7 +145,6 @@ namespace IsaacWorkshop {
     //% weight=100 blockGap=8
     //% trackArgs=0,2
     //% blockSetVariable=RGBLED
-
     //% group="RGB LED"
     export function RGBLED_create(pin: DigitalPin): HaloHd {
         let RGBLED = new HaloHd();
@@ -163,14 +163,10 @@ namespace IsaacWorkshop {
         start: number;
         _length: number;
 
-
-
-
         /**
          * Shows whole ZIP Halo display as a given color (range 0-255 for r, g, b).
          * @param rgb RGB color of the LED
          */
-    
         //% group="RGB LED"
         //% block="%RGBLED|show color %rgb=RGBLED_colors"
         //% weight=99 blockGap=8
@@ -185,7 +181,6 @@ namespace IsaacWorkshop {
         /**
          * Send all the changes to the ZIP Halo display.
          */
-    
         //% group="RGB LED"
         /* blockId="kitronik_halo_hd_display_show" block="%RGBLED|show" blockGap=8 */
         //% weight=96
@@ -200,7 +195,6 @@ namespace IsaacWorkshop {
          * Turn off all LEDs on the ZIP Halo display.
          * You need to call ``show`` to make the changes visible.
          */
-    
         //% group="RGB LED"
         /* blockId="kitronik_halo_hd_display_clear" block="%RGBLED|clear" */
         //% weight=95 blockGap=8
@@ -212,7 +206,6 @@ namespace IsaacWorkshop {
          * Set the brightness of the ZIP Halo display. This flag only applies to future show operation.
          * @param brightness a measure of LED brightness in 0-255. eg: 255
          */
-    
         //% group="RGB LED"
         //% block="%RGBLED|set brightness %brightness" blockGap=8
         //% weight=92
@@ -271,7 +264,6 @@ namespace IsaacWorkshop {
      * @param wavelength value between 470 and 625. eg: 500
      */
     //% group="RGB LED"
-
     //% weight=1 blockGap=8
     /* blockId="kitronik_halo_hd_wavelength" block="wavelength %wavelength|nm" */
     //% wavelength.min=470 wavelength.max=625
@@ -301,7 +293,6 @@ namespace IsaacWorkshop {
      * Colours end up fully saturated.
      * @param hue value between 0 and 360
      */
-
     //% group="RGB LED"
     //% weight=1 blockGap=8
     /* blockId="kitronik_halo_hd_hue" block="hue %hue" */
@@ -336,7 +327,6 @@ namespace IsaacWorkshop {
      * @param green value of the green channel between 0 and 255. eg: 255
      * @param blue value of the blue channel between 0 and 255. eg: 255
      */
-
     //% group="RGB LED"
     //% weight=1 blockGap=8
     //% blockId="rgb" block="red %red|green %green|blue %blue"
@@ -347,7 +337,6 @@ namespace IsaacWorkshop {
     /**
      * Gets the RGB value of a known color
     */
-
     //% group="RGB LED"
     //% weight=2 blockGap=8
     //% blockId="RGBLED_colors" block="%color"
