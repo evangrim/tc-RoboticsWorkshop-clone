@@ -1,6 +1,10 @@
 // Adapted from Thames & Kosmos & Gigotools (Gigotoys).
+// References:
+//   Two-point calibration: https://learn.adafruit.com/calibrating-sensors/two-point-calibration
+//   TCS34725 driver & DN40 IR correction: https://github.com/adafruit/Adafruit_TCS34725
+//   Colour finder tutorial: https://github.com/systembolaget/Physical-computing-sensor-servo-tutorial-6a-Colour-finder-with-ams-TCS34725-and-HD-1900A
 
-//% weight=0 color=#3CB371 icon="\uf2db" block="Sensors & Motors" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
+//% weight=0 color=#3CB371 icon="\uf2db" block="IsaacWorkshop" groups='["Motor", "Ultrasound", "RGB LED", "Color Sensor"]'
 enum PingUnit {
     //% block="cm"
     Centimeters,
@@ -40,7 +44,7 @@ enum RGBLedColors {
     White = 0xFFFFFF
 
 }
-namespace IsaacsWorkshop {
+namespace IsaacWorkshop {
 
     ////////////////////////////////
     //          DDM Motor         //
@@ -453,6 +457,10 @@ namespace IsaacsWorkshop {
         let green = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
         pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_BDATAL, NumberFormat.Int8LE, true);
         let blue  = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
+        // IR correction (Adafruit DN40): R and B filters leak IR; subtract estimated IR component
+        let ir = (red + green + blue > clear) ? Math.idiv(red + green + blue - clear, 2) : 0;
+        red   = Math.max(0, red - ir);
+        blue  = Math.max(0, blue - ir);
         if (clear > 0) {
             let normR = (red   / clear) * 255;
             let normG = (green / clear) * 255;
@@ -570,9 +578,9 @@ namespace IsaacsWorkshop {
         colorCalG = 1;
         colorCalB = 1;
         let rgb = readRawRGB();
-        let whiteR = rgb[0] - colorBlackR;
-        let whiteG = rgb[1] - colorBlackG;
-        let whiteB = rgb[2] - colorBlackB;
+        let whiteR = rgb[0];
+        let whiteG = rgb[1];
+        let whiteB = rgb[2];
         if (whiteR > 0) colorCalR = 255 / whiteR;
         if (whiteG > 0) colorCalG = 255 / whiteG;
         if (whiteB > 0) colorCalB = 255 / whiteB;
