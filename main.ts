@@ -22,6 +22,12 @@ enum MotorChannel {
     //% block="D"
     MotorD = 4
 }
+enum MotorDirection {
+    //% block="forward"
+    Forward = 0,
+    //% block="reverse"
+    Reverse = 1
+}
 enum RGBLedColors {
     //% block=off
     Off = 0x000000,
@@ -59,48 +65,44 @@ namespace IsaacWorkshop {
     D(16,0)
     I2C(20,19)
     */
-    //% blockId=DDMmotor2 block="motor channel %MotorPin|speed (0~100) %MSpeedValue|rotation direction(0~1) %McontrolValue" blockExternalInputs=false
-    //% McontrolValue.min=0 McontrolValue.max=1
+    //% blockId=DDMmotor2 block="motor channel %MotorPin|speed (0~100) %MSpeedValue|direction %direction" blockExternalInputs=false
     //% MSpeedValue.min=0 MSpeedValue.max=100
     //% group="Motor"
-    export function DDMmotor2(MotorPin: MotorChannel, MSpeedValue: number, McontrolValue: number): void {
-        MSpeedValue   = Math.clamp(0, 100, MSpeedValue);
-        McontrolValue = Math.clamp(0, 1,   McontrolValue);
+    export function DDMmotor2(MotorPin: MotorChannel, MSpeedValue: number, direction: MotorDirection): void {
+        MSpeedValue = Math.clamp(0, 100, MSpeedValue);
         switch (MotorPin) {
             case MotorChannel.MotorA:
                 pins.analogWritePin(AnalogPin.P1, pins.map(MSpeedValue, 0, 100, 0, 1000));
-                pins.digitalWritePin(DigitalPin.P2, pins.map(McontrolValue, 0, 1, 0, 1));
+                pins.digitalWritePin(DigitalPin.P2, direction);
                 break;
             case MotorChannel.MotorB:
                 pins.analogWritePin(AnalogPin.P8, pins.map(MSpeedValue, 0, 100, 0, 1000));
-                pins.digitalWritePin(DigitalPin.P13, pins.map(McontrolValue, 0, 1, 0, 1));
+                pins.digitalWritePin(DigitalPin.P13, direction);
                 break;
             case MotorChannel.MotorC:
                 pins.analogWritePin(AnalogPin.P14, pins.map(MSpeedValue, 0, 100, 0, 1000));
-                pins.digitalWritePin(DigitalPin.P15, pins.map(McontrolValue, 0, 1, 0, 1));
+                pins.digitalWritePin(DigitalPin.P15, direction);
                 break;
             case MotorChannel.MotorD:
                 pins.analogWritePin(AnalogPin.P16, pins.map(MSpeedValue, 0, 100, 0, 1000));
-                pins.digitalWritePin(DigitalPin.P0, pins.map(McontrolValue, 0, 1, 0, 1));
+                pins.digitalWritePin(DigitalPin.P0, direction);
                 break;
 
         }
     }
     /**Motor pinout automatically declared
       */
-    //% blockId=DDMmotor block="speed pin %MSpeedPin|speed (0~255) %MSpeedValue|direction pin %McontrolPin|rotation direction(0~1) %McontrolValue" blockExternalInputs=false
-    //% McontrolValue.min=0 McontrolValue.max=1
+    //% blockId=DDMmotor block="speed pin %MSpeedPin|speed (0~255) %MSpeedValue|direction pin %McontrolPin|direction %direction" blockExternalInputs=false
     //% MSpeedValue.min=0 MSpeedValue.max=255
     //% MSpeedPin.fieldEditor="gridpicker" MSpeedPin.fieldOptions.columns=4
     //% MSpeedPin.fieldOptions.tooltips="false" MSpeedPin.fieldOptions.width="300"
     //% McontrolPin.fieldEditor="gridpicker" McontrolPin.fieldOptions.columns=4
     //% McontrolPin.fieldOptions.tooltips="false" McontrolPin.fieldOptions.width="300"
     //% group="Motor"
-    export function DDMmotor(MSpeedPin: AnalogPin, MSpeedValue: number, McontrolPin: DigitalPin, McontrolValue: number): void {
-        MSpeedValue   = Math.clamp(0, 255, MSpeedValue);
-        McontrolValue = Math.clamp(0, 1,   McontrolValue);
+    export function DDMmotor(MSpeedPin: AnalogPin, MSpeedValue: number, McontrolPin: DigitalPin, direction: MotorDirection): void {
+        MSpeedValue = Math.clamp(0, 255, MSpeedValue);
         pins.analogWritePin(MSpeedPin, pins.map(MSpeedValue, 0, 255, 0, 1020));
-        pins.digitalWritePin(McontrolPin, pins.map(McontrolValue, 0, 1, 0, 1));
+        pins.digitalWritePin(McontrolPin, direction);
 
     }
 
@@ -426,18 +428,35 @@ namespace IsaacWorkshop {
     const TCS_CMD_BDATAL   = 0xBA;   // 0x80|0x20|0x1A — blue data low
     const TCS_CONTROL_REG  = 0x8F;   // CONTROL register for gain setting
 
-    let colorCalR = 1;
-    let colorCalG = 1;
-    let colorCalB = 1;
-    let colorBlackR = 0;
-    let colorBlackG = 0;
-    let colorBlackB = 0;
+    // Calibration state — raw uncalibrated readings for order-independent two-point cal
+    let rawBlackR = 0; let rawBlackG = 0; let rawBlackB = 0;
+    let rawWhiteR = 0; let rawWhiteG = 0; let rawWhiteB = 0;
+    let blackCalibrated = false;
+    let whiteCalibrated = false;
+
     let forkrange = 30;
     let nowReadColor = [0, 0, 0];
+    let colorReadValid = false;
+    let colorSensorInitialized = false;
+    let colorRecorded = [false, false, false, false, false, false, false, false];
 
-    // Read all four channels from TCS34725 and normalize RGB by clear channel.
-    // Applies black offset then white-balance scaling.
-    function readRawRGB(): number[] {
+    // Auto-initialize the sensor if not already done
+    function ensureInit(): void {
+        if (!colorSensorInitialized) {
+            ColorSensorinit();
+        }
+    }
+
+    // Read the clear channel from TCS34725
+    function readClearChannel(): number {
+        ensureInit();
+        pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_CDATAL, NumberFormat.Int8LE, true);
+        return pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
+    }
+
+    // Read normalized RGB without black/white calibration (for calibration routines)
+    function readRawRGBUncalibrated(): number[] {
+        ensureInit();
         pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_CDATAL, NumberFormat.Int8LE, true);
         let clear = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
         pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_RDATAL, NumberFormat.Int8LE, true);
@@ -450,15 +469,50 @@ namespace IsaacWorkshop {
         let ir = (red + green + blue > clear) ? Math.idiv(red + green + blue - clear, 2) : 0;
         red   = Math.max(0, red - ir);
         blue  = Math.max(0, blue - ir);
+        let normR = 0, normG = 0, normB = 0;
         if (clear > 0) {
-            let normR = (red   / clear) * 255;
-            let normG = (green / clear) * 255;
-            let normB = (blue  / clear) * 255;
-            red   = Math.min(255, Math.max(0, Math.round((normR - colorBlackR) * colorCalR)));
-            green = Math.min(255, Math.max(0, Math.round((normG - colorBlackG) * colorCalG)));
-            blue  = Math.min(255, Math.max(0, Math.round((normB - colorBlackB) * colorCalB)));
+            normR = (red   / clear) * 255;
+            normG = (green / clear) * 255;
+            normB = (blue  / clear) * 255;
         }
-        return [red, green, blue, clear];
+        return [normR, normG, normB, clear];
+    }
+
+    // Read calibrated RGB applying two-point [black, white] -> [0, 255] mapping
+    function readRawRGB(): number[] {
+        let raw = readRawRGBUncalibrated();
+        let r = raw[0], g = raw[1], b = raw[2];
+
+        let bR = blackCalibrated ? rawBlackR : 0;
+        let bG = blackCalibrated ? rawBlackG : 0;
+        let bB = blackCalibrated ? rawBlackB : 0;
+
+        if (whiteCalibrated) {
+            let rangeR = rawWhiteR - bR;
+            let rangeG = rawWhiteG - bG;
+            let rangeB = rawWhiteB - bB;
+            r = rangeR > 0 ? (r - bR) / rangeR * 255 : 0;
+            g = rangeG > 0 ? (g - bG) / rangeG * 255 : 0;
+            b = rangeB > 0 ? (b - bB) / rangeB * 255 : 0;
+        } else if (blackCalibrated) {
+            r = r - bR;
+            g = g - bG;
+            b = b - bB;
+        }
+
+        r = Math.min(255, Math.max(0, Math.round(r)));
+        g = Math.min(255, Math.max(0, Math.round(g)));
+        b = Math.min(255, Math.max(0, Math.round(b)));
+
+        return [r, g, b, raw[3]];
+    }
+
+    // If ColorSensorReadColor was called, reuse that read; otherwise read fresh
+    function ensureRead(): void {
+        if (!colorReadValid) {
+            let raw = readRawRGB();
+            nowReadColor = [raw[0], raw[1], raw[2]];
+        }
     }
 
     // Euclidean distance between two RGB colors
@@ -476,7 +530,7 @@ namespace IsaacWorkshop {
         let delta = max - min;
         if (delta == 0) return 0;
         let h = 0;
-        if (max == r)      h = ((g - b) / delta) % 6;
+        if (max == r)      h = (g - b) / delta;
         else if (max == g) h = (b - r) / delta + 2;
         else               h = (r - g) / delta + 4;
         h = Math.round(h * 60);
@@ -511,6 +565,7 @@ namespace IsaacWorkshop {
     export function ColorSensorinit(): void {
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ATIME, NumberFormat.UInt16BE, false)
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ENABLE, NumberFormat.UInt16BE, false)
+        colorSensorInitialized = true;
     }
 
     export enum ColorSensorGain {
@@ -527,25 +582,29 @@ namespace IsaacWorkshop {
     //% weight=15
     //% block="set color sensor gain %gain"
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorSetGain(gain: ColorSensorGain): void {
+        ensureInit();
         pins.i2cWriteNumber(TCS_ADDR, (TCS_CONTROL_REG << 8) | gain, NumberFormat.UInt16BE, false);
+        blackCalibrated = false;
+        whiteCalibrated = false;
     }
 
     //% weight=15
-    //% block="color sensor ambient brightness (0-100)"
+    //% block="color sensor brightness"
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorReadBrightness(): number {
-        pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_CDATAL, NumberFormat.Int8LE, true);
-        let rawClear = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
+        let rawClear = readClearChannel();
         return Math.min(100, Math.round(rawClear / 655));
     }
 
     //% weight=15
     //% block="color sensor suggested gain"
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorSuggestedGain(): ColorSensorGain {
-        pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_CDATAL, NumberFormat.Int8LE, true);
-        let rawClear = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
+        let rawClear = readClearChannel();
         if (rawClear < 1000)  return ColorSensorGain.x60;
         if (rawClear < 8000)  return ColorSensorGain.x16;
         if (rawClear < 20000) return ColorSensorGain.x4;
@@ -555,95 +614,92 @@ namespace IsaacWorkshop {
     //% weight=15
     //% block="color sensor auto-set gain for environment"
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorAutoGain(): void {
         ColorSensorSetGain(ColorSensorSuggestedGain());
     }
 
     //% weight=14
-    //% block="calibrate color sensor white balance"
+    //% block="calibrate color sensor on white surface"
     //% group="Color Sensor"
     export function ColorSensorCalibrateWhite(): void {
-        colorCalR = 1;
-        colorCalG = 1;
-        colorCalB = 1;
-        let rgb = readRawRGB();
-        let whiteR = rgb[0];
-        let whiteG = rgb[1];
-        let whiteB = rgb[2];
-        if (whiteR > 0) colorCalR = 255 / whiteR;
-        if (whiteG > 0) colorCalG = 255 / whiteG;
-        if (whiteB > 0) colorCalB = 255 / whiteB;
+        let rgb = readRawRGBUncalibrated();
+        rawWhiteR = rgb[0];
+        rawWhiteG = rgb[1];
+        rawWhiteB = rgb[2];
+        whiteCalibrated = true;
     }
 
     //% weight=14
-    //% block="calibrate color sensor black (point at dark surface)"
+    //% block="calibrate color sensor on dark surface"
     //% group="Color Sensor"
     export function ColorSensorCalibrateBlack(): void {
-        colorCalR = 1; colorCalG = 1; colorCalB = 1;
-        colorBlackR = 0; colorBlackG = 0; colorBlackB = 0;
-        let rgb = readRawRGB();
-        colorBlackR = rgb[0];
-        colorBlackG = rgb[1];
-        colorBlackB = rgb[2];
+        let rgb = readRawRGBUncalibrated();
+        rawBlackR = rgb[0];
+        rawBlackG = rgb[1];
+        rawBlackB = rgb[2];
+        blackCalibrated = true;
     }
 
     //% weight=12
     //% block="color sensor read color"
     //% group="Color Sensor"
-    export function ColorSensorReadColor(): void {
+    export function ColorSensorReadColor(): number {
+        colorReadValid = false;
         let raw = readRawRGB();
         nowReadColor = [raw[0], raw[1], raw[2]];
+        colorReadValid = true;
+        return packRGB(raw[0], raw[1], raw[2]);
     }
 
     export enum Channel {
-        //% block="R"
+        //% block="red"
         Red = 1,
-        //% block="G"
+        //% block="green"
         Green = 2,
-        //% block="B"
+        //% block="blue"
         Blue = 3
     }
 
     //% weight=12
-    //% block="color sensor read RGB %channel |channel"
+    //% block="color sensor %channel value"
     //% group="Color Sensor"
     export function ColorSensorRead(channel: Channel = 1): number {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
+        ensureRead();
         switch (channel) {
-            case Channel.Red:   return raw[0];
-            case Channel.Green: return raw[1];
-            case Channel.Blue:  return raw[2];
+            case Channel.Red:   return nowReadColor[0];
+            case Channel.Green: return nowReadColor[1];
+            case Channel.Blue:  return nowReadColor[2];
         }
         return 0;
     }
 
     //% weight=12
-    //% block="color sensor read hue (0-360)"
+    //% block="color sensor hue"
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorReadHue(): number {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
-        return rgbToHue(raw[0], raw[1], raw[2]);
+        ensureRead();
+        return rgbToHue(nowReadColor[0], nowReadColor[1], nowReadColor[2]);
     }
 
     //% weight=12
-    //% block="color sensor read saturation (0-100)"
+    //% block="color sensor saturation"
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorReadSaturation(): number {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
-        return rgbToSaturation(raw[0], raw[1], raw[2]);
+        ensureRead();
+        return rgbToSaturation(nowReadColor[0], nowReadColor[1], nowReadColor[2]);
     }
 
     //% weight=12
     //% block="color sensor is gray (saturation below %threshold)"
     //% threshold.min=0 threshold.max=100
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorIsGray(threshold: number = 20): boolean {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
-        return rgbToSaturation(raw[0], raw[1], raw[2]) < threshold;
+        ensureRead();
+        return rgbToSaturation(nowReadColor[0], nowReadColor[1], nowReadColor[2]) < threshold;
     }
 
     export enum ColorPart {
@@ -690,13 +746,15 @@ namespace IsaacWorkshop {
             case ColorPart.Custom2: ReadCustom2Color = rgb; break;
             case ColorPart.Custom3: ReadCustom3Color = rgb; break;
         }
+        colorRecorded[colorpart - 1] = true;
     }
 
     //% weight=11 blockGap=8
-    //% block="set color match tolerance %range"
+    //% block="color sensor set match tolerance %range"
     //% range.min=1 range.max=100
     //% group="Color Sensor"
-    export function setColorTolerance(range: number): void {
+    //% advanced=true
+    export function setColorTolerance(range: number = 30): void {
         forkrange = Math.clamp(1, 100, range);
     }
 
@@ -704,8 +762,7 @@ namespace IsaacWorkshop {
     //% block="color sensor matches stored %colorpart"
     //% group="Color Sensor"
     export function ColorSensorMatchesStored(colorpart: ColorPart): boolean {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
+        ensureRead();
         return colorDistance(nowReadColor, getStoredColor(colorpart)) < forkrange;
     }
 
@@ -715,9 +772,9 @@ namespace IsaacWorkshop {
     //% g.min=0 g.max=255
     //% b.min=0 b.max=255
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorMatchesRGB(r: number, g: number, b: number): boolean {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
+        ensureRead();
         return colorDistance(nowReadColor, [r, g, b]) < forkrange;
     }
 
@@ -725,13 +782,13 @@ namespace IsaacWorkshop {
     //% block="color sensor hue matches stored %colorpart within %hueTolerance degrees"
     //% hueTolerance.min=1 hueTolerance.max=180
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorMatchesStoredByHue(colorpart: ColorPart, hueTolerance: number = 30): boolean {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
-        if (rgbToSaturation(raw[0], raw[1], raw[2]) < 15) return false;
+        ensureRead();
+        if (rgbToSaturation(nowReadColor[0], nowReadColor[1], nowReadColor[2]) < 15) return false;
         let ref = getStoredColor(colorpart);
         if (rgbToSaturation(ref[0], ref[1], ref[2]) < 15) return false;
-        let h1 = rgbToHue(raw[0], raw[1], raw[2]);
+        let h1 = rgbToHue(nowReadColor[0], nowReadColor[1], nowReadColor[2]);
         let h2 = rgbToHue(ref[0], ref[1], ref[2]);
         let diff = Math.abs(h1 - h2);
         return (diff > 180 ? 360 - diff : diff) <= hueTolerance;
@@ -741,11 +798,11 @@ namespace IsaacWorkshop {
     //% block="color sensor closest stored color"
     //% group="Color Sensor"
     export function ColorSensorClosestMatch(): ColorPart {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
+        ensureRead();
         let bestPart = ColorPart.Red;
         let bestDist = 999999;
         for (let i = 1; i <= 8; i++) {
+            if (!colorRecorded[i - 1]) continue;
             let ref = getStoredColor(i);
             let d = colorDistance(nowReadColor, ref);
             if (d < bestDist) { bestDist = d; bestPart = i; }
@@ -756,10 +813,10 @@ namespace IsaacWorkshop {
     //% weight=10
     //% block="show scanned color on %led"
     //% group="Color Sensor"
+    //% advanced=true
     export function ColorSensorShowOnLED(led: HaloHd): void {
-        let raw = readRawRGB();
-        nowReadColor = [raw[0], raw[1], raw[2]];
-        led.RGBLED_set_color(packRGB(raw[0], raw[1], raw[2]));
+        ensureRead();
+        led.RGBLED_set_color(packRGB(nowReadColor[0], nowReadColor[1], nowReadColor[2]));
     }
 
 }
