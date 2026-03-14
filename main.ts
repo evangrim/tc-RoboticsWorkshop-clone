@@ -438,6 +438,7 @@ namespace IsaacWorkshop {
     let nowReadColor = [0, 0, 0];
     let colorReadValid = false;
     let colorSensorInitialized = false;
+    let irCorrectionEnabled = false;
     let colorRecorded = [false, false, false, false, false, false, false, false];
 
     // Auto-initialize the sensor if not already done
@@ -466,9 +467,13 @@ namespace IsaacWorkshop {
         pins.i2cWriteNumber(TCS_ADDR, TCS_CMD_BDATAL, NumberFormat.Int8LE, true);
         let blue  = pins.i2cReadNumber(TCS_ADDR, NumberFormat.UInt16LE, false);
         // IR correction (Adafruit DN40): R and B filters leak IR; subtract estimated IR component
-        let ir = (red + green + blue > clear) ? Math.idiv(red + green + blue - clear, 2) : 0;
-        red   = Math.max(0, red - ir);
-        blue  = Math.max(0, blue - ir);
+        // Disabled by default — the sensor's built-in LED produces no IR, so the correction
+        // mistakenly strips real red/blue signal. Enable only for sunlight/incandescent use.
+        if (irCorrectionEnabled) {
+            let ir = (red + green + blue > clear) ? Math.idiv(red + green + blue - clear, 2) : 0;
+            red   = Math.max(0, red - ir);
+            blue  = Math.max(0, blue - ir);
+        }
         let normR = 0, normG = 0, normB = 0;
         if (clear > 0) {
             normR = (red   / clear) * 255;
@@ -565,6 +570,7 @@ namespace IsaacWorkshop {
     export function ColorSensorinit(): void {
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ATIME, NumberFormat.UInt16BE, false)
         pins.i2cWriteNumber(TCS_ADDR, TCS_INIT_ENABLE, NumberFormat.UInt16BE, false)
+        basic.pause(200);
         colorSensorInitialized = true;
     }
 
@@ -588,6 +594,14 @@ namespace IsaacWorkshop {
         pins.i2cWriteNumber(TCS_ADDR, (TCS_CONTROL_REG << 8) | gain, NumberFormat.UInt16BE, false);
         blackCalibrated = false;
         whiteCalibrated = false;
+    }
+
+    //% weight=15
+    //% block="color sensor enable IR correction %enabled"
+    //% group="Color Sensor"
+    //% advanced=true
+    export function ColorSensorSetIRCorrection(enabled: boolean): void {
+        irCorrectionEnabled = enabled;
     }
 
     //% weight=15
