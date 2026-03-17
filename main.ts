@@ -564,6 +564,7 @@ namespace IsaacWorkshop {
         return [0, 0, 0];
     }
 
+    /** Turn on the color sensor. Place this in "on start" before any other color sensor blocks. */
     //% weight=16
     //% block="initialize color sensor"
     //% group="Color Sensor"
@@ -585,6 +586,7 @@ namespace IsaacWorkshop {
         x60 = 3
     }
 
+    /** Adjust sensor sensitivity. Higher gain helps in dim lighting. Resets calibration. */
     //% weight=15
     //% block="set color sensor gain %gain"
     //% group="Color Sensor"
@@ -596,6 +598,7 @@ namespace IsaacWorkshop {
         whiteCalibrated = false;
     }
 
+    /** Enable IR correction only if using the sensor in sunlight or incandescent light (not the built-in LED). */
     //% weight=15
     //% block="color sensor enable IR correction %enabled"
     //% group="Color Sensor"
@@ -604,8 +607,9 @@ namespace IsaacWorkshop {
         irCorrectionEnabled = enabled;
     }
 
+    /** How much light the sensor sees right now (0 = dark, 100 = very bright). */
     //% weight=15
-    //% block="color sensor brightness"
+    //% block="color sensor brightness (0–100)"
     //% group="Color Sensor"
     //% advanced=true
     export function ColorSensorReadBrightness(): number {
@@ -613,6 +617,7 @@ namespace IsaacWorkshop {
         return Math.min(100, Math.round(rawClear / 655));
     }
 
+    /** Returns the best gain setting for the current lighting. Use with "set color sensor gain". */
     //% weight=15
     //% block="color sensor suggested gain"
     //% group="Color Sensor"
@@ -625,6 +630,7 @@ namespace IsaacWorkshop {
         return ColorSensorGain.x1;
     }
 
+    /** Automatically picks the best gain for the current lighting. Resets calibration. */
     //% weight=15
     //% block="color sensor auto-set gain for environment"
     //% group="Color Sensor"
@@ -633,6 +639,7 @@ namespace IsaacWorkshop {
         ColorSensorSetGain(ColorSensorSuggestedGain());
     }
 
+    /** Hold the sensor over a white surface and run this to set the bright end of calibration. */
     //% weight=14
     //% block="calibrate color sensor on white surface"
     //% group="Color Sensor"
@@ -644,6 +651,7 @@ namespace IsaacWorkshop {
         whiteCalibrated = true;
     }
 
+    /** Hold the sensor over a dark/black surface and run this to set the dark end of calibration. */
     //% weight=14
     //% block="calibrate color sensor on dark surface"
     //% group="Color Sensor"
@@ -655,8 +663,9 @@ namespace IsaacWorkshop {
         blackCalibrated = true;
     }
 
+    /** Scan the surface under the sensor. Call this before reading individual R/G/B values or matching colors. */
     //% weight=12
-    //% block="color sensor read color"
+    //% block="color sensor scan color"
     //% group="Color Sensor"
     export function ColorSensorReadColor(): number {
         colorReadValid = false;
@@ -675,8 +684,9 @@ namespace IsaacWorkshop {
         Blue = 3
     }
 
+    /** Get the red, green, or blue value (0–255) from the last scan. */
     //% weight=12
-    //% block="color sensor %channel value"
+    //% block="color sensor %channel value (0–255)"
     //% group="Color Sensor"
     export function ColorSensorRead(channel: Channel = 1): number {
         ensureRead();
@@ -688,8 +698,9 @@ namespace IsaacWorkshop {
         return 0;
     }
 
+    /** The color angle from the last scan: 0=red, 120=green, 240=blue. */
     //% weight=12
-    //% block="color sensor hue"
+    //% block="color sensor hue (0–360°)"
     //% group="Color Sensor"
     //% advanced=true
     export function ColorSensorReadHue(): number {
@@ -697,8 +708,9 @@ namespace IsaacWorkshop {
         return rgbToHue(nowReadColor[0], nowReadColor[1], nowReadColor[2]);
     }
 
+    /** How vivid the color is: 0% = gray/white, 100% = pure color. */
     //% weight=12
-    //% block="color sensor saturation"
+    //% block="color sensor saturation (0–100%)"
     //% group="Color Sensor"
     //% advanced=true
     export function ColorSensorReadSaturation(): number {
@@ -706,8 +718,9 @@ namespace IsaacWorkshop {
         return rgbToSaturation(nowReadColor[0], nowReadColor[1], nowReadColor[2]);
     }
 
+    /** True if the surface has little color (e.g. white, gray, or black). */
     //% weight=12
-    //% block="color sensor is gray (saturation below %threshold)"
+    //% block="color sensor is gray (saturation below %threshold\\%)"
     //% threshold.min=0 threshold.max=100
     //% group="Color Sensor"
     //% advanced=true
@@ -744,6 +757,7 @@ namespace IsaacWorkshop {
     let ReadCustom2Color = [0, 0, 0]
     let ReadCustom3Color = [0, 0, 0]
 
+    /** Save the current surface color as a reference. Use "matches stored" to compare against it later. */
     //% weight=12
     //% block="color sensor record %colorpart |"
     //% group="Color Sensor"
@@ -763,6 +777,7 @@ namespace IsaacWorkshop {
         colorRecorded[colorpart - 1] = true;
     }
 
+    /** How close a color must be to count as a match. Lower = stricter, higher = more forgiving. */
     //% weight=11 blockGap=8
     //% block="color sensor set match tolerance %range"
     //% range.min=1 range.max=100
@@ -772,6 +787,7 @@ namespace IsaacWorkshop {
         forkrange = Math.clamp(1, 100, range);
     }
 
+    /** True if the last scanned color is close to the recorded reference color. */
     //% weight=10
     //% block="color sensor matches stored %colorpart"
     //% group="Color Sensor"
@@ -780,6 +796,7 @@ namespace IsaacWorkshop {
         return colorDistance(nowReadColor, getStoredColor(colorpart)) < forkrange;
     }
 
+    /** True if the last scanned color is close to the given R/G/B values (each 0–255). */
     //% weight=10
     //% block="color sensor matches R %r G %g B %b"
     //% r.min=0 r.max=255
@@ -792,6 +809,7 @@ namespace IsaacWorkshop {
         return colorDistance(nowReadColor, [r, g, b]) < forkrange;
     }
 
+    /** Like "matches stored" but compares only the hue (color wheel angle), ignoring brightness. Returns false for grays. */
     //% weight=10
     //% block="color sensor hue matches stored %colorpart within %hueTolerance degrees"
     //% hueTolerance.min=1 hueTolerance.max=180
@@ -808,6 +826,7 @@ namespace IsaacWorkshop {
         return (diff > 180 ? 360 - diff : diff) <= hueTolerance;
     }
 
+    /** Returns which recorded color is the best match for the last scan (only considers colors you have recorded). */
     //% weight=10
     //% block="color sensor closest stored color"
     //% group="Color Sensor"
@@ -824,6 +843,7 @@ namespace IsaacWorkshop {
         return bestPart;
     }
 
+    /** Display the last scanned color on an RGB LED — useful for debugging. */
     //% weight=10
     //% block="show scanned color on %led"
     //% group="Color Sensor"
