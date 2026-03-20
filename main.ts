@@ -525,6 +525,12 @@ namespace IsaacWorkshop {
         }
     }
 
+    function median5(a: number, b: number, c: number, d: number, e: number): number {
+        let arr = [a, b, c, d, e];
+        arr.sort((x, y) => x - y);
+        return arr[2];
+    }
+
     // Euclidean distance between two RGB colors
     function colorDistance(a: number[], b: number[]): number {
         let dr = a[0] - b[0];
@@ -678,6 +684,30 @@ namespace IsaacWorkshop {
         nowReadColor = [raw[0], raw[1], raw[2]];
         colorReadValid = true;
         return packRGB(raw[0], raw[1], raw[2]);
+    }
+
+    /** Scan the surface under the sensor 5 times and keep the middle reading of each color channel, filtering out noise. Returns a combined color number. Takes about 1 second. Use this instead of "scan color" on textured or uneven surfaces for more consistent results. */
+    //% weight=99
+    //% block="careful scan color"
+    //% group="3. Color Scan"
+    export function ColorSensorCarefulScan(): number {
+        colorReadValid = false;
+        let r: number[] = [];
+        let g: number[] = [];
+        let b: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            if (i > 0) basic.pause(240);
+            let raw = readRawRGB();
+            r.push(raw[0]);
+            g.push(raw[1]);
+            b.push(raw[2]);
+        }
+        let mR = median5(r[0], r[1], r[2], r[3], r[4]);
+        let mG = median5(g[0], g[1], g[2], g[3], g[4]);
+        let mB = median5(b[0], b[1], b[2], b[3], b[4]);
+        nowReadColor = [mR, mG, mB];
+        colorReadValid = true;
+        return packRGB(mR, mG, mB);
     }
 
     export enum Channel {
