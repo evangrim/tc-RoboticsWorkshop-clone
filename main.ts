@@ -346,6 +346,11 @@ namespace IsaacWorkshop {
         return color;
     }
 
+    // Gamma correction for WS2812B LEDs (gamma ≈ 2.8 is standard for NeoPixels)
+    function gammaCorrect(value: number): number {
+        return Math.round(Math.pow(value / 255, 2.8) * 255);
+    }
+
     //Combines individual RGB settings to be a single number
     function packRGB(a: number, b: number, c: number): number {
         return ((a & 0xFF) << 16) | ((b & 0xFF) << 8) | (c & 0xFF);
@@ -850,7 +855,11 @@ namespace IsaacWorkshop {
     //% advanced=true
     export function ColorSensorShowOnLED(led: HaloHd): void {
         ensureRead();
-        led.RGBLED_set_color(packRGB(nowReadColor[0], nowReadColor[1], nowReadColor[2]));
+        led.RGBLED_set_color(packRGB(
+            gammaCorrect(nowReadColor[0]),
+            gammaCorrect(nowReadColor[1]),
+            gammaCorrect(nowReadColor[2])
+        ));
     }
 
 }
