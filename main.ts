@@ -1,4 +1,4 @@
-// Adapted from Thames & Kosmos & Gigotools (Gigotoys).
+// Isaac's Robotics Workshop. Adapted from Thames & Kosmos & Gigotools (Gigotoys).
 // References:
 //   Two-point calibration: https://learn.adafruit.com/calibrating-sensors/two-point-calibration
 //   TCS34725 driver & DN40 IR correction: https://github.com/adafruit/Adafruit_TCS34725
@@ -846,6 +846,65 @@ namespace IsaacWorkshop {
             if (d < bestDist) { bestDist = d; bestPart = i; }
         }
         return bestPart;
+    }
+
+    /** Get the red, green, or blue value saved in a stored color slot. Use "record color" first. */
+    //% weight=85
+    //% block="stored %colorpart %channel value (0–255)"
+    //% group="4. Color Match"
+    //% advanced=true
+    export function StoredColorRead(colorpart: ColorPart, channel: Channel = 1): number {
+        let c = getStoredColor(colorpart);
+        switch (channel) {
+            case Channel.Red:   return c[0];
+            case Channel.Green: return c[1];
+            case Channel.Blue:  return c[2];
+        }
+    }
+
+    /** The color wheel angle of a stored color: 0=red, 120=green, 240=blue. Use "record color" first. */
+    //% weight=84
+    //% block="stored %colorpart hue (0–360°)"
+    //% group="4. Color Match"
+    //% advanced=true
+    export function StoredColorHue(colorpart: ColorPart): number {
+        let c = getStoredColor(colorpart);
+        return rgbToHue(c[0], c[1], c[2]);
+    }
+
+    /** How vivid a stored color is: 0%=gray/white, 100%=pure color. Use "record color" first. */
+    //% weight=83
+    //% block="stored %colorpart saturation (0–100%)"
+    //% group="4. Color Match"
+    //% advanced=true
+    export function StoredColorSaturation(colorpart: ColorPart): number {
+        let c = getStoredColor(colorpart);
+        return rgbToSaturation(c[0], c[1], c[2]);
+    }
+
+    /** True if a stored color has little saturation (e.g. white, gray, or black). Use "record color" first. */
+    //% weight=82
+    //% block="stored %colorpart is gray (saturation below %threshold\\%)"
+    //% threshold.min=0 threshold.max=100
+    //% group="4. Color Match"
+    //% advanced=true
+    export function StoredColorIsGray(colorpart: ColorPart, threshold: number = 20): boolean {
+        let c = getStoredColor(colorpart);
+        return rgbToSaturation(c[0], c[1], c[2]) < threshold;
+    }
+
+    /** Display a stored color on an RGB LED — useful for verifying what was recorded. */
+    //% weight=81
+    //% block="show stored %colorpart color on %led"
+    //% group="4. Color Match"
+    //% advanced=true
+    export function StoredColorShowOnLED(colorpart: ColorPart, led: HaloHd): void {
+        let c = getStoredColor(colorpart);
+        led.RGBLED_set_color(packRGB(
+            gammaCorrect(c[0]),
+            gammaCorrect(c[1]),
+            gammaCorrect(c[2])
+        ));
     }
 
     /** Display the last scanned color on an RGB LED — useful for debugging. */

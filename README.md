@@ -1,7 +1,6 @@
-# RoboticsWorkshop
-![Gigotools](icon.png)
+# Isaac's Robotics Workshop
 
-Blocks provided by Thames & Kosmos for Robotics Workshop with Micro:Bit
+Provides a modest suite of MakeCode Micro:Bit sensor blocks, designed for Thames & Kosmos Robotics Workshop and Sensor Expansion. Adapted from code provided by Thames & Kosmos for Robotics Workshop with Micro:Bit, originally developed by Gigotoys.
 
 ## Color Sensor Guide
 
