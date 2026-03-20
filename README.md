@@ -67,6 +67,17 @@ If lighting varies and you want to ignore brightness differences, use hue matchi
 
 This compares only the color wheel angle (0–360°), so a dim red and a bright red both match. It returns false for gray/white/black surfaces automatically.
 
+### Color Scanning Tips
+
+  - Keep distance constant — the sensor-to-surface gap matters a lot. That's where a servo jig like yours helps                                             
+  - Same lighting — calibrate and record under the same light you'll scan under. The built-in LED helps here since it's consistent
+  - Use hue matching for color identity — RGB distance (matches stored) is sensitive to brightness variations. Hue matching (hue matches stored) ignores    
+  brightness and just asks "is this red vs blue vs green?" which is more robust                                                                             
+  - Use RGB matching for shade precision — if you need to distinguish light blue from dark blue, hue won't help; RGB distance will                          
+  - Tighter tolerance = fewer false positives but you need more consistent positioning                                                                      
+  - Distinct colors are easier — red vs blue vs green is very reliable; red vs orange is harder and needs tighter tolerances and good calibration           
+
+
 ## License
 
 * MIT
